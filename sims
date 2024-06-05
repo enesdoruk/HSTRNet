@@ -1,0 +1,15 @@
+            self.meta_data_HR = self.testlist_HR[:int(len(self.testlist_HR) / 6)]
+            self.meta_data_LR = self.testlist_LR[:int(len(self.testlist_LR) / 6)]
+
+org-model, orig deform conv (1HR, 1LR)
+Number of validation samples in: 2079
+100%|██████████| 2078/2078 [08:03<00:00,  4.29it/s]Total average:
+0.014531131772838955
+41.97990176554042
+0.97700601981828
+
+
+
+
+
+
