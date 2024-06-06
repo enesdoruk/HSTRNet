@@ -10,6 +10,7 @@ import io
 import torch.nn.functional as F
 
 
+
 from torch.nn.parallel import DistributedDataParallel as DDP
 from model.RIFE_v5.warplayer import warp
 from model.RIFE_v5.IFNet import IFNet
@@ -41,8 +42,6 @@ class HSTRNet(nn.Module):
         param_list = list(self.contextnet.parameters())
         for param in self.unet.parameters():
             param_list.append(param)
-        # print(param_list)
-        # print(list(self.unet.parameters()))
         return param_list
     
     def convert(self, param):
@@ -87,9 +86,7 @@ class HSTRNet(nn.Module):
         
         
         # ref-->t+1, lr-->t
-        start_time_rife = time.time()
         _, _, flow = self.ifnet(torch.cat((lr, ref), 1))
-        rife_time = time.time() - start_time_rife
         # 0.5 --> lr, 0.5 -->ref
         # what we need --> gt --> ref (0-->1)
         # (0.5 --> ref) * 2 = 0-->ref (gt-->ref)
@@ -99,20 +96,12 @@ class HSTRNet(nn.Module):
         f_0_1 = F.interpolate(f_0_1, scale_factor=2.0, mode="bilinear", align_corners=False) * 2.0
         warped_gt = warp(ref, f_0_1, self.device)
         # Warped gt and warped gt2 gives same result, using warped gt2 directly might give better performance
-        #psnr = -10 * math.log10(((gt - warped_gt) * (gt - warped_gt)).mean())
-        #print(psnr)
-        psnr=0
-
         
-        start_time_context = time.time()
+        
         c0 = self.contextnet(ref, f_0_1)
-        import pdb; pdb.set_trace()
-        context_time = time.time() - start_time_context
 
 
-        start_time_fusion = time.time()        
         refine_output = self.unet(warped_gt, lr, c0)
-        fusion_time = time.time() - start_time_fusion
         
         res = torch.sigmoid(refine_output[:, :3]) * 2 - 1
         mask = torch.sigmoid(refine_output[:, 3:4])
@@ -120,4 +109,5 @@ class HSTRNet(nn.Module):
         pred = merged_img + res
         pred = torch.clamp(pred, 0, 1)
         
-        return pred, rife_time, context_time, fusion_time, psnr
+        
+        return pred

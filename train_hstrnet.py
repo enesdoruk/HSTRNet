@@ -10,6 +10,7 @@ import os
 from tqdm import tqdm
 from dataset import VimeoDataset, DataLoader, MAMIDataset
 from model.pytorch_msssim import ssim_matlab
+from CX.CSFlow import *
 
 
 
@@ -28,7 +29,7 @@ def hstrnet(model, transform, epochs, bs_tr, bs_val, lr, ifnet_load, \
                 "batch_size": bs_tr
                 }
     
-    wandb.init(project="HSTRNET_demo", name='random_ref', config=config)
+    wandb.init(project="HSTRNET_demo", name='context_loss_w_weight', config=config)
 
     if finetune:
         if 'epochs' in wandb.config:
@@ -98,6 +99,8 @@ def hstrnet(model, transform, epochs, bs_tr, bs_val, lr, ifnet_load, \
 
     start = time.time()
 
+    context_lambda = 0.1
+
     loss = 0
     psnr_list = []
     ssim_list = []
@@ -131,7 +134,7 @@ def hstrnet(model, transform, epochs, bs_tr, bs_val, lr, ifnet_load, \
             
             imgs = torch.cat((ref, lr), 1)
             optimizer.zero_grad()
-            pred, _, _, _, _ = model(imgs)
+            pred = model(imgs)
 
             if netron:
                 import cv2
@@ -159,6 +162,9 @@ def hstrnet(model, transform, epochs, bs_tr, bs_val, lr, ifnet_load, \
             
           
             L1_loss = L1_lossFn(pred, gt)
+            context_loss = CX_loss(pred.cpu().detach().numpy(), gt.cpu().detach().numpy(), distance=Distance.L2, nnsigma=float(1.0))
+            L1_loss += context_loss.numpy() * context_lambda
+            
             L1_loss.backward()
             optimizer.step()
             loss += float(L1_loss.item())
@@ -241,7 +247,7 @@ def validate_hstrnet(model, val_data, len_val, batch_size):
             
             imgs = torch.cat((ref, lr), 1)
     
-            pred, _, _, _, _ = model(imgs)
+            pred = model(imgs)
 
 
             # wandb_pred = pred.detach().to('cpu').numpy()
