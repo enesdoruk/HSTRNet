@@ -131,7 +131,7 @@ def hstrnet(model, transform, epochs, bs_tr, bs_val, lr, ifnet_load, \
             
             imgs = torch.cat((ref, lr), 1)
             optimizer.zero_grad()
-            pred, _, _, _, _ = model(imgs)
+            pred = model(imgs)
 
             if netron:
                 import cv2
@@ -141,8 +141,6 @@ def hstrnet(model, transform, epochs, bs_tr, bs_val, lr, ifnet_load, \
                 network_img = cv2.imread("network_hstrnet.png")
                 arch = wandb.Image(network_img, caption="Network architecture")
                 wandb.log({"network_architecture": arch})
-
-
                 netron = False
             
 
@@ -241,7 +239,7 @@ def validate_hstrnet(model, val_data, len_val, batch_size):
             
             imgs = torch.cat((ref, lr), 1)
     
-            pred, _, _, _, _ = model(imgs)
+            pred = model(imgs)
 
 
             # wandb_pred = pred.detach().to('cpu').numpy()
