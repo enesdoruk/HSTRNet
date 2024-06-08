@@ -17,7 +17,7 @@ from model.HSTR_RIFE_v5_scaled import HSTRNet
 def args_config():
     parser = argparse.ArgumentParser(description="train")
     parser.add_argument("--epoch", default=20, type=int)
-    parser.add_argument("--bs_train", default=16, type=int)
+    parser.add_argument("--bs_train", default=8, type=int)
     parser.add_argument("--lr", default=0.0001, type=float)
     parser.add_argument("--weight_decay", default=0.001, type=float)
     parser.add_argument("--ifnet_load", default='./model_dict/ifnet.pkl', type=str)

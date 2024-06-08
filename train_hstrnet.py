@@ -10,7 +10,7 @@ import os
 from tqdm import tqdm
 from dataset import VimeoDataset, DataLoader, MAMIDataset
 from model.pytorch_msssim import ssim_matlab
-
+from FDL_pytorch.FDL import FDL_loss
 
 
 netron = False
@@ -62,6 +62,7 @@ def hstrnet(model, transform, epochs, bs_tr, bs_val, lr, ifnet_load, \
 
     len_val = dataset_val.__len__()
     L1_lossFn = nn.L1Loss()
+    fdl_loss = FDL_loss().cuda()
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
 
@@ -155,7 +156,7 @@ def hstrnet(model, transform, epochs, bs_tr, bs_val, lr, ifnet_load, \
                 
             # wandb.log({"train/Table" : table})
             
-          
+            fur_loss = fdl_loss(pred, gt)
             L1_loss = L1_lossFn(pred, gt)
             L1_loss.backward()
             optimizer.step()
