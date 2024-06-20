@@ -75,36 +75,26 @@ class _NonLocalBlockND(nn.Module):
         """
 
         batch_size = x.size(0)
-        
         if(x.shape[2] == 1 or x.shape[3] == 1):
             x = F.interpolate(x, scale_factor=2, mode="bilinear",
                              align_corners=False) * 2.0
-        
         g_x = self.g(x).view(batch_size, self.inter_channels, -1)
         g_x = g_x.permute(0, 2, 1)
-        
-        
+
         theta_x = self.theta(x).view(batch_size, self.inter_channels, -1)
         theta_x = theta_x.permute(0, 2, 1)
         phi_x = self.phi(x).view(batch_size, self.inter_channels, -1)
-        
         f = torch.matmul(theta_x, phi_x)
-        
-        torch.exp(f)
-        summed = torch.sum(f, dim = -1, keepdim=True)
-        f /= summed
-        
-        y = torch.matmul(f, g_x)
+        f_div_C = F.softmax(f, dim=-1)
+
+        y = torch.matmul(f_div_C, g_x)
         y = y.permute(0, 2, 1).contiguous()
         y = y.view(batch_size, self.inter_channels, *x.size()[2:])
         W_y = self.W(y)
         z = W_y + x
 
-        
-
         if return_nl_map:
-            # return z, f_div_C
-            return z, f
+            return z, f_div_C
         return z
 
 
@@ -150,5 +140,4 @@ if __name__ == '__main__':
         net = NONLocalBlock3D(3, sub_sample=sub_sample_, bn_layer=bn_layer_)
         out = net(img)
         print(out.size())
-
 

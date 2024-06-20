@@ -19,7 +19,10 @@ def conv(in_planes, out_planes, kernel_size=3, stride=1, padding=1, dilation=1):
     return nn.Sequential(
         nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride,
                   padding=padding, dilation=dilation, bias=True),
-        nn.PReLU(out_planes)
+        nn.PReLU(out_planes),
+        # nn.BatchNorm2d(out_planes)
+        
+        
     )
 
 class IFBlock(nn.Module):
@@ -45,13 +48,9 @@ class IFBlock(nn.Module):
     def forward(self, x):
         if self.scale != 1:
             x = F.interpolate(x, scale_factor= 1. / self.scale, mode="bilinear", align_corners=False)
-        
         x = self.conv0(x)
-        
         x = self.convblock(x) + x
-        
         x = self.conv1(x)
-        
         flow = x
         if self.scale != 1:
             flow = F.interpolate(flow, scale_factor= self.scale, mode="bilinear", align_corners=False)
@@ -62,25 +61,24 @@ class IFNet(nn.Module):
         super(IFNet, self).__init__()
         self.device = device
         self.block0 = IFBlock(6, scale=4, c=240)
-        self.block1 = IFBlock(10, scale=2, c=150)
-        self.block2 = IFBlock(10, scale=1, c=90)
+        self.block1 = IFBlock(7, scale=2, c=150)
+        self.block2 = IFBlock(7, scale=1, c=90)
 
     def forward(self, x):
         flow0 = self.block0(x)
-        # [B, 4, H / 2, W / 2]
         F1 = flow0
         F1_large = F.interpolate(F1, scale_factor=2.0, mode="bilinear", align_corners=False) * 2.0
-        # F1_large[:, :2] 0 -> 0.5
-        # F1_large[:, 2:4] 1 -> 0.5
-        warped_img0 = warp(x[:, :3], F1_large[:, :2], self.device)
-        warped_img1 = warp(x[:, 3:], F1_large[:, 2:4], self.device)
-        flow1 = self.block1(torch.cat((warped_img0, warped_img1, F1_large), 1))
+        warped_img = warp(x[:, 3:], F1_large[:, 2:4] * 2, self.device)
+        flow1 = self.block1(torch.cat((warped_img, F1_large), 1))
         F2 = (flow0 + flow1)
         F2_large = F.interpolate(F2, scale_factor=2.0, mode="bilinear", align_corners=False) * 2.0
-        warped_img0 = warp(x[:, :3], F2_large[:, :2], self.device)
-        warped_img1 = warp(x[:, 3:], F2_large[:, 2:4], self.device)
-        flow2 = self.block2(torch.cat((warped_img0, warped_img1, F2_large), 1))
+        warped_img = warp(x[:, 3:], F2_large[:, 2:4] * 2, self.device)
+        flow2 = self.block2(torch.cat((warped_img, F2_large), 1))
         F3 = (flow0 + flow1 + flow2)
         
+        ''' f_0_1 = flow[:, 2:4] * 2
+        f_0_1 = F.interpolate(f_0_1, scale_factor=2.0, mode="bilinear", align_corners=False) * 2.0
+        warped_gt = warp(ref, f_0_1, self.device)'''
+        
         # return F3, [F1, F2, F3]
-        return warped_img0, warped_img1, F3
+        return warped_img, F3
